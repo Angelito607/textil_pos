@@ -82,36 +82,79 @@ async function ensureSqliteSchema(db) {
   await db.exec('CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha);');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_ventas_cliente ON ventas(cliente_id);');
 
-  await migrateUsuariosTableIfNeeded(db);
-}
-
-async function migrateUsuariosTableIfNeeded(db) {
-  const info = await db.all("PRAGMA table_info('usuarios')");
-  if (!Array.isArray(info) || info.length === 0) return;
-
-  const idColumn = info.find(column => column.name === 'id');
-  if (idColumn && idColumn.pk === 1 && idColumn.type.toUpperCase() === 'INTEGER') return;
-
-  console.warn('Migrando tabla usuarios a esquema SQLite con id AUTOINCREMENT');
-  console.warn('Esquema previo de usuarios:', JSON.stringify(info));
-
-  await db.exec('PRAGMA foreign_keys = OFF;');
-  await db.exec('BEGIN TRANSACTION;');
-  await db.exec('ALTER TABLE usuarios RENAME TO usuarios_old;');
-  await db.exec(`CREATE TABLE usuarios (
+  await migrateTableIfNeeded(db, 'usuarios', `CREATE TABLE usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     rol TEXT NOT NULL DEFAULT 'invitado',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );`);
-  await db.exec('INSERT INTO usuarios (usuario, password_hash, rol, created_at) SELECT usuario, password_hash, rol, created_at FROM usuarios_old;');
-  await db.exec('DROP TABLE usuarios_old;');
+  );`, 'usuario, password_hash, rol, created_at');
+
+  await migrateTableIfNeeded(db, 'productos', `CREATE TABLE productos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo TEXT UNIQUE NOT NULL,
+    nombre TEXT NOT NULL,
+    descripcion TEXT,
+    precio REAL NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
+    categoria TEXT,
+    unidad_medida TEXT,
+    imagen TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );`, 'codigo, nombre, descripcion, precio, stock, categoria, unidad_medida, imagen, created_at, updated_at');
+
+  await migrateTableIfNeeded(db, 'clientes', `CREATE TABLE clientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    telefono TEXT,
+    email TEXT,
+    direccion TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );`, 'nombre, telefono, email, direccion, created_at');
+
+  await migrateTableIfNeeded(db, 'ventas', `CREATE TABLE ventas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    total REAL NOT NULL,
+    metodo_pago TEXT NOT NULL,
+    fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
+  );`, 'cliente_id, total, metodo_pago, fecha');
+
+  await migrateTableIfNeeded(db, 'detalle_ventas', `CREATE TABLE detalle_ventas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_id INTEGER NOT NULL,
+    producto_id INTEGER NOT NULL,
+    cantidad INTEGER NOT NULL,
+    precio_unitario REAL NOT NULL,
+    subtotal REAL NOT NULL,
+    FOREIGN KEY (venta_id) REFERENCES ventas(id) ON DELETE CASCADE,
+    FOREIGN KEY (producto_id) REFERENCES productos(id)
+  );`, 'venta_id, producto_id, cantidad, precio_unitario, subtotal');
+}
+
+async function migrateTableIfNeeded(db, tableName, createTableSql, columnList) {
+  const info = await db.all(`PRAGMA table_info('${tableName}')`);
+  if (!Array.isArray(info) || info.length === 0) return;
+
+  const idColumn = info.find(column => column.name === 'id');
+  if (idColumn && idColumn.pk === 1 && idColumn.type.toUpperCase() === 'INTEGER') return;
+
+  console.warn(`Migrando tabla ${tableName} a esquema SQLite con id AUTOINCREMENT`);
+  console.warn(`Esquema previo de ${tableName}:`, JSON.stringify(info));
+
+  await db.exec('PRAGMA foreign_keys = OFF;');
+  await db.exec('BEGIN TRANSACTION;');
+  await db.exec(`ALTER TABLE ${tableName} RENAME TO ${tableName}_old;`);
+  await db.exec(createTableSql);
+  await db.exec(`INSERT INTO ${tableName} (${columnList}) SELECT ${columnList} FROM ${tableName}_old;`);
+  await db.exec(`DROP TABLE ${tableName}_old;`);
   await db.exec('COMMIT;');
   await db.exec('PRAGMA foreign_keys = ON;');
 
-  const migratedInfo = await db.all("PRAGMA table_info('usuarios')");
-  console.warn('Esquema migrado de usuarios:', JSON.stringify(migratedInfo));
+  const migratedInfo = await db.all(`PRAGMA table_info('${tableName}')`);
+  console.warn(`Esquema migrado de ${tableName}:`, JSON.stringify(migratedInfo));
 }
 
 async function getConnection() {
