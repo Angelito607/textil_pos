@@ -21,7 +21,97 @@ async function initSqlite(dbPath) {
   if (sqliteDb) return sqliteDb;
   await fs.promises.mkdir(path.dirname(dbPath), { recursive: true });
   sqliteDb = await open({ filename: dbPath, driver: sqlite3.Database });
+  await sqliteDb.exec('PRAGMA foreign_keys = ON;');
+  await ensureSqliteSchema(sqliteDb);
   return sqliteDb;
+}
+
+async function ensureSqliteSchema(db) {
+  await db.exec(`CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    rol TEXT NOT NULL DEFAULT 'invitado',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );`);
+
+  await db.exec(`CREATE TABLE IF NOT EXISTS productos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo TEXT UNIQUE NOT NULL,
+    nombre TEXT NOT NULL,
+    descripcion TEXT,
+    precio REAL NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
+    categoria TEXT,
+    unidad_medida TEXT,
+    imagen TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );`);
+
+  await db.exec(`CREATE TABLE IF NOT EXISTS clientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    telefono TEXT,
+    email TEXT,
+    direccion TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );`);
+
+  await db.exec(`CREATE TABLE IF NOT EXISTS ventas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    total REAL NOT NULL,
+    metodo_pago TEXT NOT NULL,
+    fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
+  );`);
+
+  await db.exec(`CREATE TABLE IF NOT EXISTS detalle_ventas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_id INTEGER NOT NULL,
+    producto_id INTEGER NOT NULL,
+    cantidad INTEGER NOT NULL,
+    precio_unitario REAL NOT NULL,
+    subtotal REAL NOT NULL,
+    FOREIGN KEY (venta_id) REFERENCES ventas(id) ON DELETE CASCADE,
+    FOREIGN KEY (producto_id) REFERENCES productos(id)
+  );`);
+
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_productos_codigo ON productos(codigo);');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha);');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_ventas_cliente ON ventas(cliente_id);');
+
+  await migrateUsuariosTableIfNeeded(db);
+}
+
+async function migrateUsuariosTableIfNeeded(db) {
+  const info = await db.all("PRAGMA table_info('usuarios')");
+  if (!Array.isArray(info) || info.length === 0) return;
+
+  const idColumn = info.find(column => column.name === 'id');
+  if (idColumn && idColumn.pk === 1 && idColumn.type.toUpperCase() === 'INTEGER') return;
+
+  console.warn('Migrando tabla usuarios a esquema SQLite con id AUTOINCREMENT');
+  console.warn('Esquema previo de usuarios:', JSON.stringify(info));
+
+  await db.exec('PRAGMA foreign_keys = OFF;');
+  await db.exec('BEGIN TRANSACTION;');
+  await db.exec('ALTER TABLE usuarios RENAME TO usuarios_old;');
+  await db.exec(`CREATE TABLE usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    rol TEXT NOT NULL DEFAULT 'invitado',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );`);
+  await db.exec('INSERT INTO usuarios (usuario, password_hash, rol, created_at) SELECT usuario, password_hash, rol, created_at FROM usuarios_old;');
+  await db.exec('DROP TABLE usuarios_old;');
+  await db.exec('COMMIT;');
+  await db.exec('PRAGMA foreign_keys = ON;');
+
+  const migratedInfo = await db.all("PRAGMA table_info('usuarios')");
+  console.warn('Esquema migrado de usuarios:', JSON.stringify(migratedInfo));
 }
 
 async function getConnection() {
