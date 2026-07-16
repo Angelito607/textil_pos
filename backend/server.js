@@ -50,3 +50,34 @@ app.use('/api/usuarios', require('./routes/usuarios'));
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
+
+// Ensure admin user exists on startup
+const bcrypt = require('bcrypt');
+const { getConnection } = require('./db');
+
+async function ensureAdminUser() {
+  const user = process.env.ADMIN_USER || 'admin';
+  const pass = process.env.ADMIN_PASS || 'Admin123!';
+  try {
+    const connection = await getConnection();
+    if (!connection) {
+      console.warn('No DB connection available to create admin user.');
+      return;
+    }
+
+    const [rows] = await connection.query('SELECT id FROM usuarios WHERE usuario = ?', [user]);
+    const exists = Array.isArray(rows) ? rows.length > 0 : false;
+    if (!exists) {
+      const hash = await bcrypt.hash(pass, 10);
+      await connection.query('INSERT INTO usuarios (usuario, password_hash, rol) VALUES (?, ?, ?)', [user, hash, 'admin']);
+      console.log(`Usuario admin creado: ${user}`);
+    } else {
+      console.log(`Usuario admin ya existe: ${user}`);
+    }
+  } catch (err) {
+    console.error('Error asegurando usuario admin:', err.message);
+  }
+}
+
+// Run after small delay to ensure server is ready
+setTimeout(() => { ensureAdminUser(); }, 1000);
