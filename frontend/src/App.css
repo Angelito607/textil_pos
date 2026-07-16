@@ -1,0 +1,85 @@
+:root {
+  color-scheme: light;
+  font-family: 'Inter', 'Roboto', Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #121212;
+  background: #f4f4f4;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: #f4f4f4; color: #121212; }
+a { text-decoration: none; color: inherit; }
+button, input, select, textarea { font: inherit; }
+
+.app-shell { min-height: 100vh; background: #f4f4f4; }
+.content { padding: 1.5rem 0; max-width: 1300px; margin: auto; }
+
+.navbar-custom { background: #050505; }
+.navbar-custom .navbar-brand { color: #ffffff; font-weight: 700; letter-spacing: 0.02em; }
+.navbar-custom .navbar-brand .brand-mark { width: 42px; height: 42px; border-radius: 14px; background: #ffffff; color: #050505; font-weight: 700; display: grid; place-items: center; }
+.brand-logo { width: 42px; height: 42px; object-fit: contain; border-radius: 12px; background: #ffffff; padding: 4px; }
+.home-brand { text-align: center; }
+.home-logo { width: 100px; height: auto; max-width: 120px; }
+.navbar-custom .navbar-nav .nav-link { color: #c9c9c9; padding: 0.75rem 1rem; border-radius: 999px; transition: all 0.2s ease; }
+.navbar-custom .navbar-nav .nav-link.active,
+.navbar-custom .navbar-nav .nav-link:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
+.navbar-custom .navbar-toggler { border-color: rgba(255,255,255,0.15); }
+.navbar-custom .navbar-toggler-icon { filter: invert(1); }
+.navbar-custom .auth-actions { gap: 0.65rem; }
+.navbar-custom .badge-role { background: rgba(255,255,255,0.08); color: #d3d3d3; border-radius: 999px; padding: 0.45rem 0.9rem; font-size: 0.82rem; }
+
+.card-custom { border: none; border-radius: 1.5rem; box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08); background: #ffffff; }
+.card-custom .card-header { border-bottom: none; padding-bottom: 0; }
+.card-custom .card-body { padding: 1.5rem; }
+
+.card-menu { border: none; border-radius: 1.5rem; background: #ffffff; text-align: left; transition: transform 0.2s ease, border-color 0.2s ease; }
+.card-menu:hover { transform: translateY(-2px); border-color: rgba(0, 0, 0, 0.08); }
+.menu-icon { width: 46px; height: 46px; }
+
+.section-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.section-header h2 { margin: 0; font-size: 1.35rem; }
+.section-header p { margin: 0; color: #6c757d; }
+
+.card-product { border: 1px solid #eaeaea; border-radius: 1.4rem; background: #ffffff; }
+.card-product .card-body { padding: 1.2rem; }
+
+.product-card { border: 1px solid #e8e8e8; border-radius: 1.25rem; padding: 0; background: #ffffff; overflow: hidden; transition: transform 0.2s ease; }
+.product-card:hover { transform: translateY(-3px); }
+.product-card-image { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.product-card h5 { margin-bottom: 0.5rem; }
+.product-card p { margin-bottom: 1rem; }
+
+.form-panel { background: #f8f9fa; border-radius: 1.25rem; padding: 1.2rem; border: 1px solid #e9ecef; }
+.form-panel .form-label { font-weight: 600; }
+
+.total-box { background: #f7f3ec; border-radius: 14px; padding: 0.9rem; }
+
+@media (max-width: 768px) {
+  .section-header { flex-direction: column; align-items: flex-start; }
+}
+
+.collapse-card { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+.collapse-card.show { max-height: 1200px; }
+
+.alert-custom { border-radius: 1rem; margin-top: 1rem; }
+
+.table-custom thead th { border-bottom: 2px solid #dee2e6; }
+.table-custom tbody tr:hover { background: #f8f9fa; }
+
+@media (max-width: 992px) {
+  .section-header { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 768px) {
+  .navbar-custom .navbar-nav { margin-top: 1rem; }
+  .content { padding: 1rem; }
+  .product-card { padding: 0.85rem; }
+}
+
+.btn-black { background: #111111; color: #ffffff; border: none; }
+.btn-black:hover { background: #2a2a2a; }
+
+.input, .form-select, .form-control, .form-control:focus, .form-select:focus { border-radius: 1rem; }
+
+.text-muted { color: #6c757d !important; }
