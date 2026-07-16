@@ -15,7 +15,9 @@ router.post('/login', async (req, res) => {
     const [rows] = await connection.query('SELECT * FROM usuarios WHERE usuario = ?', [usuario]);
     user = rows[0];
   } else {
-    user = getMemoryState().usuarios.find((u) => u.usuario === usuario);
+    const state = getMemoryState();
+    const usuarios = state.usuarios || [];
+    user = usuarios.find((u) => u.usuario === usuario);
   }
 
   if (!user) {
@@ -51,6 +53,8 @@ router.post('/register', async (req, res) => {
 
   if (!connection) {
     const state = getMemoryState();
+    state.usuarios = state.usuarios || [];
+    state.clientes = state.clientes || [];
 
     const existeUsuario = state.usuarios.some((u) => u.usuario === usuario);
     if (existeUsuario) {
